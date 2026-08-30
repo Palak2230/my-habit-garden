@@ -36,3 +36,16 @@ export const formatWeekRange = (reference: Date) => {
 };
 
 export const isSameDay = (a: Date, b: Date) => toDateKey(a) === toDateKey(b);
+
+export const startOfMonth = (date: Date) => {
+  const d = new Date(date.getFullYear(), date.getMonth(), 1);
+  d.setHours(0, 0, 0, 0);
+  return d;
+};
+
+export const monthDaysGrid = (date: Date) => {
+  const first = startOfMonth(date);
+  const offset = (first.getDay() + 6) % 7;
+  const start = addDays(first, -offset);
+  return Array.from({ length: 42 }, (_, i) => addDays(start, i));
+};
