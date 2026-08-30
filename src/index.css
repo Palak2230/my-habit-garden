@@ -1,0 +1,22 @@
+@import "tailwindcss";
+
+:root {
+  --cream: #fbf6f1;
+  --rose: #e7bac5;
+  --lavender: #c8bedf;
+  --sage: #b6cfbf;
+  --blue: #bfd6e6;
+  --peach: #f3cfba;
+  --ink: #5c4e53;
+}
+
+body {
+  margin: 0;
+  font-family: "Inter", "SF Pro Text", system-ui, sans-serif;
+  background: var(--cream);
+  color: var(--ink);
+}
+
+#root {
+  min-height: 100vh;
+}
