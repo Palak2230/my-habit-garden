@@ -11,6 +11,7 @@ type AddHabitInput = {
   name: string;
   emoji: string;
   categoryId: HabitCategoryId;
+  weeklyGoal: number;
 };
 
 type GardenContextValue = {
@@ -71,13 +72,14 @@ export const GardenProvider = ({ children }: { children: React.ReactNode }) => {
     return data.completions.some((c) => c.habitId === habitId && c.date === dateKey && c.completed);
   };
 
-  const addHabit = ({ name, emoji, categoryId }: AddHabitInput) => {
+  const addHabit = ({ name, emoji, categoryId, weeklyGoal }: AddHabitInput) => {
     const categoryHabits = data.habits.filter((h) => h.categoryId === categoryId);
     const next: Habit = {
       id: crypto.randomUUID(),
       name,
       emoji,
       categoryId,
+      weeklyGoal: Math.max(1, Math.min(7, weeklyGoal)),
       active: true,
       order: categoryHabits.length + 1,
       createdAt: new Date().toISOString(),

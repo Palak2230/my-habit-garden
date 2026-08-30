@@ -3,13 +3,14 @@ import type { HabitCategoryId } from "../../types/habit";
 
 type Props = {
   onClose: () => void;
-  onAdd: (input: { name: string; emoji: string; categoryId: HabitCategoryId }) => void;
+  onAdd: (input: { name: string; emoji: string; categoryId: HabitCategoryId; weeklyGoal: number }) => void;
 };
 
 export const AddHabitModal = ({ onClose, onAdd }: Props) => {
   const [name, setName] = useState("");
   const [emoji, setEmoji] = useState("🌷");
   const [categoryId, setCategoryId] = useState<HabitCategoryId>("skincare");
+  const [weeklyGoal, setWeeklyGoal] = useState(7);
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/30 p-4" onClick={onClose}>
@@ -41,10 +42,22 @@ export const AddHabitModal = ({ onClose, onAdd }: Props) => {
             >
               <option value="skincare">🧴 Skincare</option>
               <option value="bodycare">🫧 Bodycare</option>
+              <option value="haircare">💆 Hair Care</option>
               <option value="productivity">📚 Productivity</option>
               <option value="health">💪 Health</option>
               <option value="supplements">💊 Supplements</option>
             </select>
+          </label>
+          <label className="block">
+            <span className="text-sm">Weekly Goal (days out of 7)</span>
+            <input
+              type="number"
+              min={1}
+              max={7}
+              value={weeklyGoal}
+              onChange={(e) => setWeeklyGoal(Math.max(1, Math.min(7, Number(e.target.value) || 1)))}
+              className="mt-1 w-full rounded-lg border border-stone-200 px-3 py-2"
+            />
           </label>
         </div>
         <div className="mt-4 flex justify-end gap-2">
@@ -55,7 +68,7 @@ export const AddHabitModal = ({ onClose, onAdd }: Props) => {
             type="button"
             onClick={() => {
               if (!name.trim()) return;
-              onAdd({ name: name.trim(), emoji: emoji.trim() || "🌷", categoryId });
+              onAdd({ name: name.trim(), emoji: emoji.trim() || "🌷", categoryId, weeklyGoal });
               onClose();
             }}
             className="rounded-lg bg-rose-200 px-3 py-2 text-sm font-medium text-rose-900"

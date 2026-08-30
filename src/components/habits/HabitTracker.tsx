@@ -13,7 +13,7 @@ import { WeeklyReflection } from "./WeeklyReflection";
 import { WeeklyStats } from "./WeeklyStats";
 
 export const HabitTracker = () => {
-  const { data, addHabit, statsForWeek, updateReflection } = useHabits();
+  const { data, addHabit, statsForWeek, updateReflection, updateHabit } = useHabits();
   const { toggleCompletion, isCompleted } = useCompletions();
   const { reference, days, rangeLabel, goPrev, goNext, goThisWeek } = useWeek();
   const [adding, setAdding] = useState(false);
@@ -77,7 +77,7 @@ export const HabitTracker = () => {
         <>
           <WeekNavigation rangeLabel={rangeLabel} onPrev={goPrev} onNext={goNext} onThisWeek={goThisWeek} />
 
-          <div className="mb-2 grid grid-cols-[180px_repeat(7,minmax(42px,1fr))] gap-1 text-center text-xs font-semibold text-stone-500">
+          <div className="mb-2 grid grid-cols-[270px_repeat(7,minmax(42px,1fr))_130px] gap-1 text-center text-xs font-semibold text-stone-500">
             <div />
             {days.map((day) => {
               const key = toDateKey(day);
@@ -88,17 +88,24 @@ export const HabitTracker = () => {
                 </div>
               );
             })}
+            <div>PROGRESS</div>
           </div>
 
           {categories.map((category) => (
             <CategorySection
               key={category.id}
+              categoryId={category.id}
               title={category.name}
               emoji={category.emoji}
               accent={category.accent}
               habits={category.habits}
               dayKeys={dayKeys}
               dateLookup={dateLookup}
+              onWeeklyGoalChange={(habitId, weeklyGoal) => {
+                const habit = data.habits.find((h) => h.id === habitId);
+                if (!habit) return;
+                updateHabit({ ...habit, weeklyGoal });
+              }}
               completed={(habitId, dateKey) => isCompleted(habitId, dateLookup[dateKey])}
               onToggle={toggleCompletion}
             />
