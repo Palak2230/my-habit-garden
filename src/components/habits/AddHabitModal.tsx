@@ -41,10 +41,12 @@ export const AddHabitModal = ({ onClose, onAdd }: Props) => {
               className="mt-1 w-full rounded-lg border border-stone-200 px-3 py-2"
             >
               <option value="skincare">🧴 Skincare</option>
+              <option value="beforesleep">🌌 Before Sleep Routine</option>
               <option value="bodycare">🫧 Bodycare</option>
               <option value="haircare">💆 Hair Care</option>
               <option value="productivity">📚 Productivity</option>
               <option value="health">💪 Health</option>
+              <option value="fitness">🏃 Fitness</option>
               <option value="supplements">💊 Supplements</option>
             </select>
           </label>

@@ -8,24 +8,48 @@ const nowIso = () => new Date().toISOString();
 const normalize = (value: string) => value.trim().toLowerCase();
 
 const skincareRoutineDefaults = [
-  ["☀️", "AM • Facewash"],
+  ["☀️", "AM • Cetaphil Facewash"],
   ["☀️", "AM • Toner"],
   ["☀️", "AM • Vitamin C Serum"],
-  ["☀️", "AM • Eye Cream"],
-  ["☀️", "AM • Moisturizer"],
   ["☀️", "AM • Sunscreen"],
-  ["🌙", "PM • Facewash"],
-  ["🌙", "PM • Toner"],
-  ["🌙", "PM • Serums"],
-  ["🌙", "PM • Eye Cream"],
+  ["🌙", "PM • Minimalist Facewash"],
+  ["🌙", "PM • Niacinamide Serum"],
+  ["🌙", "PM • Azelaic Acid"],
   ["🌙", "PM • Moisturizer"],
 ] as const;
 
+const beforeSleepDefaults = [
+  ["🌌", "Read Book"],
+  ["🌌", "Put Phone Away in Last 30 Minutes"],
+  ["🌌", "Use Facial Rollers"],
+  ["🌌", "Put Body Lotion"],
+] as const;
+
+const bodycareDefaults = [
+  ["🚿", "Shower"],
+  ["🧴", "Body Lotion"],
+  ["🦶", "Foot Cream"],
+  ["✨", "Roll On"],
+] as const;
+
 const haircareDefaults = [
-  ["💆", "Hair Care"],
-  ["🧴", "Hair Serum"],
-  ["🤲", "Hair Massage"],
-  ["🧖", "Hair Mask"],
+  ["🧴", "WishCare Serum"],
+  ["🤲", "Massage"],
+  ["🫧", "Hair Wash"],
+  ["🪔", "Hair Oiling"],
+] as const;
+
+const healthDefaults = [
+  ["💧", ">2L Water Intake"],
+  ["🌙", "Sleep till 12:30 AM"],
+] as const;
+
+const fitnessDefaults = [
+  ["🚶", "Walk 5000 Steps a Day"],
+  ["🏋️", "Exercise"],
+  ["🧘", "Yoga"],
+  ["🙂", "Face Exercises"],
+  ["🪑", "Back Posture Exercises"],
 ] as const;
 
 const supplementDefaults = [
@@ -39,25 +63,26 @@ const supplementDefaults = [
 
 const defaultCategories: Category[] = [
   { id: "skincare", name: "Skincare", emoji: "🧴", accent: "#E7BAC5", order: 1 },
-  { id: "bodycare", name: "Bodycare", emoji: "🫧", accent: "#BFD6E6", order: 2 },
-  { id: "haircare", name: "Hair Care", emoji: "💆", accent: "#E8C7B8", order: 3 },
-  { id: "productivity", name: "Productivity", emoji: "📚", accent: "#C8BEDF", order: 4 },
-  { id: "health", name: "Health", emoji: "💪", accent: "#B6CFBF", order: 5 },
-  { id: "supplements", name: "Supplements", emoji: "💊", accent: "#F3CFBA", order: 6 },
+  { id: "beforesleep", name: "Before Sleep Routine", emoji: "🌌", accent: "#D4CAE6", order: 2 },
+  { id: "bodycare", name: "Bodycare", emoji: "🫧", accent: "#BFD6E6", order: 3 },
+  { id: "haircare", name: "Hair Care", emoji: "💆", accent: "#E8C7B8", order: 4 },
+  { id: "productivity", name: "Productivity", emoji: "📚", accent: "#C8BEDF", order: 5 },
+  { id: "health", name: "Health", emoji: "💪", accent: "#B6CFBF", order: 6 },
+  { id: "fitness", name: "Fitness", emoji: "🏃", accent: "#BEE1D8", order: 7 },
+  { id: "supplements", name: "Supplements", emoji: "💊", accent: "#F3CFBA", order: 8 },
 ];
 
 const defaultHabits: Habit[] = [
   ...skincareRoutineDefaults.map(([emoji, name]) => [emoji, name, "skincare"] as const),
-  ["🚿", "Shower", "bodycare"],
-  ["🧴", "Body Lotion", "bodycare"],
+  ...beforeSleepDefaults.map(([emoji, name]) => [emoji, name, "beforesleep"] as const),
+  ...bodycareDefaults.map(([emoji, name]) => [emoji, name, "bodycare"] as const),
   ...haircareDefaults.map(([emoji, name]) => [emoji, name, "haircare"] as const),
   ["💻", "Study / Work", "productivity"],
   ["📖", "Reading", "productivity"],
   ["📝", "Plan Tomorrow", "productivity"],
   ["📵", "Limit Scrolling", "productivity"],
-  ["💧", "2L Water", "health"],
-  ["🧘", "Exercise / Stretch", "health"],
-  ["😴", "Sleep on Time", "health"],
+  ...healthDefaults.map(([emoji, name]) => [emoji, name, "health"] as const),
+  ...fitnessDefaults.map(([emoji, name]) => [emoji, name, "fitness"] as const),
   ...supplementDefaults.map(([emoji, name]) => [emoji, name, "supplements"] as const),
 ].map(([emoji, name, categoryId], index) => ({
   id: crypto.randomUUID(),
@@ -115,6 +140,9 @@ export const habitStorage = {
         if (habit.categoryId === "health" && habit.name.trim().toLowerCase() === "supplements") {
           return { ...habit, categoryId: "supplements" as Habit["categoryId"] };
         }
+        if (habit.categoryId === "skincare" && normalize(habit.name).startsWith("before sleep •")) {
+          return { ...habit, categoryId: "beforesleep" as Habit["categoryId"] };
+        }
         if (
           habit.categoryId === "bodycare" &&
           new Set(["hair care", "hair mask"]).has(normalize(habit.name))
@@ -130,16 +158,72 @@ export const habitStorage = {
         "treatment",
       ]);
       const skincareMigratedHabits = migratedHabits.map((habit) => {
+        if (habit.categoryId === "skincare" && normalize(habit.name) === "am • facewash") {
+          return { ...habit, name: "AM • Cetaphil Facewash" };
+        }
         if (habit.categoryId === "skincare" && normalize(habit.name) === "am • serums") {
           return { ...habit, name: "AM • Vitamin C Serum" };
+        }
+        if (habit.categoryId === "skincare" && normalize(habit.name) === "pm • facewash") {
+          return { ...habit, name: "PM • Minimalist Facewash" };
+        }
+        if (habit.categoryId === "skincare" && normalize(habit.name) === "pm • serums") {
+          return { ...habit, name: "PM • Niacinamide Serum" };
+        }
+        if (
+          habit.categoryId === "skincare" &&
+          new Set([
+            "am • eye cream",
+            "am • moisturizer",
+            "pm • toner",
+            "pm • eye cream",
+          ]).has(normalize(habit.name))
+        ) {
+          return { ...habit, active: false };
+        }
+        if (habit.categoryId === "skincare" && normalize(habit.name) === "pm • moisturizer") {
+          return { ...habit, active: true };
+        }
+        if (habit.categoryId === "skincare" && normalize(habit.name) === "am • toner") {
+          return { ...habit, active: true };
         }
         if (habit.categoryId === "skincare" && legacySkincareNames.has(normalize(habit.name))) {
           return { ...habit, active: false };
         }
         return habit;
       });
+      const routineAdjustedHabits = skincareMigratedHabits.map((habit) => {
+        if (
+          habit.categoryId === "beforesleep" &&
+          normalize(habit.name).startsWith("before sleep •")
+        ) {
+          return { ...habit, name: habit.name.replace(/^Before Sleep •\s*/i, "").trim() };
+        }
+        if (habit.categoryId === "haircare" && normalize(habit.name) === "hair serum") {
+          return { ...habit, name: "WishCare Serum" };
+        }
+        if (habit.categoryId === "haircare" && normalize(habit.name) === "hair massage") {
+          return { ...habit, name: "Massage" };
+        }
+        if (habit.categoryId === "haircare" && normalize(habit.name) === "hair care") {
+          return { ...habit, active: false };
+        }
+        if (habit.categoryId === "haircare" && normalize(habit.name) === "hair mask") {
+          return { ...habit, active: false };
+        }
+        if (habit.categoryId === "health" && normalize(habit.name) === "2l water") {
+          return { ...habit, name: ">2L Water Intake" };
+        }
+        if (habit.categoryId === "health" && normalize(habit.name) === "sleep on time") {
+          return { ...habit, name: "Sleep till 12:30 AM" };
+        }
+        if (habit.categoryId === "health" && normalize(habit.name) === "exercise / stretch") {
+          return { ...habit, categoryId: "fitness" as Habit["categoryId"], name: "Exercise" };
+        }
+        return habit;
+      });
       // Drop legacy generic "Supplements" row now that supplements have dedicated habits.
-      const cleanedHabits = skincareMigratedHabits.filter(
+      const cleanedHabits = routineAdjustedHabits.filter(
         (habit) => !(habit.categoryId === "supplements" && normalize(habit.name) === "supplements"),
       );
       const existingSkincareNames = new Set(
@@ -157,6 +241,26 @@ export const habitStorage = {
           weeklyGoal: 7,
           active: true,
           order: index + 1,
+          createdAt: nowIso(),
+        }));
+      const existingBeforeSleepNames = new Set(
+        cleanedHabits
+          .filter((habit) => habit.categoryId === "beforesleep")
+          .map((habit) => normalize(habit.name)),
+      );
+      const lastBeforeSleepOrder = cleanedHabits
+        .filter((habit) => habit.categoryId === "beforesleep")
+        .reduce((max, habit) => Math.max(max, habit.order), 0);
+      const beforeSleepMissingHabits = beforeSleepDefaults
+        .filter(([, name]) => !existingBeforeSleepNames.has(normalize(name)))
+        .map(([emoji, name], index) => ({
+          id: crypto.randomUUID(),
+          emoji,
+          name,
+          categoryId: "beforesleep" as Habit["categoryId"],
+          weeklyGoal: 7,
+          active: true,
+          order: lastBeforeSleepOrder + index + 1,
           createdAt: nowIso(),
         }));
       const existingHaircareNames = new Set(
@@ -179,6 +283,66 @@ export const habitStorage = {
           order: lastHaircareOrder + index + 1,
           createdAt: nowIso(),
         }));
+      const existingBodycareNames = new Set(
+        cleanedHabits
+          .filter((habit) => habit.categoryId === "bodycare")
+          .map((habit) => normalize(habit.name)),
+      );
+      const lastBodycareOrder = cleanedHabits
+        .filter((habit) => habit.categoryId === "bodycare")
+        .reduce((max, habit) => Math.max(max, habit.order), 0);
+      const bodycareMissingHabits = bodycareDefaults
+        .filter(([, name]) => !existingBodycareNames.has(normalize(name)))
+        .map(([emoji, name], index) => ({
+          id: crypto.randomUUID(),
+          emoji,
+          name,
+          categoryId: "bodycare" as Habit["categoryId"],
+          weeklyGoal: 7,
+          active: true,
+          order: lastBodycareOrder + index + 1,
+          createdAt: nowIso(),
+        }));
+      const existingHealthNames = new Set(
+        cleanedHabits
+          .filter((habit) => habit.categoryId === "health")
+          .map((habit) => normalize(habit.name)),
+      );
+      const lastHealthOrder = cleanedHabits
+        .filter((habit) => habit.categoryId === "health")
+        .reduce((max, habit) => Math.max(max, habit.order), 0);
+      const healthMissingHabits = healthDefaults
+        .filter(([, name]) => !existingHealthNames.has(normalize(name)))
+        .map(([emoji, name], index) => ({
+          id: crypto.randomUUID(),
+          emoji,
+          name,
+          categoryId: "health" as Habit["categoryId"],
+          weeklyGoal: 7,
+          active: true,
+          order: lastHealthOrder + index + 1,
+          createdAt: nowIso(),
+        }));
+      const existingFitnessNames = new Set(
+        cleanedHabits
+          .filter((habit) => habit.categoryId === "fitness")
+          .map((habit) => normalize(habit.name)),
+      );
+      const lastFitnessOrder = cleanedHabits
+        .filter((habit) => habit.categoryId === "fitness")
+        .reduce((max, habit) => Math.max(max, habit.order), 0);
+      const fitnessMissingHabits = fitnessDefaults
+        .filter(([, name]) => !existingFitnessNames.has(normalize(name)))
+        .map(([emoji, name], index) => ({
+          id: crypto.randomUUID(),
+          emoji,
+          name,
+          categoryId: "fitness" as Habit["categoryId"],
+          weeklyGoal: 7,
+          active: true,
+          order: lastFitnessOrder + index + 1,
+          createdAt: nowIso(),
+        }));
       const existingSupplementNames = new Set(
         cleanedHabits
           .filter((habit) => habit.categoryId === "supplements")
@@ -199,7 +363,16 @@ export const habitStorage = {
         }));
       return {
         version: 1,
-        habits: [...cleanedHabits, ...skincareMissingHabits, ...haircareMissingHabits, ...missingSupplementHabits],
+        habits: [
+          ...cleanedHabits,
+          ...skincareMissingHabits,
+          ...beforeSleepMissingHabits,
+          ...bodycareMissingHabits,
+          ...haircareMissingHabits,
+          ...healthMissingHabits,
+          ...fitnessMissingHabits,
+          ...missingSupplementHabits,
+        ],
         categories: mergedCategories,
         completions: Array.isArray(parsed.completions) ? (parsed.completions as Completion[]) : [],
         reflections: Array.isArray(parsed.reflections) ? (parsed.reflections as Reflection[]) : [],

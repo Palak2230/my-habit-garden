@@ -51,7 +51,7 @@ export const HabitTracker = () => {
             + Add Habit
           </button>
           <Link to="/habits/manage" className="rounded-lg border border-rose-200 px-3 py-2 text-sm">
-            Manage Habits
+            Remove Habit
           </Link>
         </div>
       </header>
@@ -105,6 +105,31 @@ export const HabitTracker = () => {
                 const habit = data.habits.find((h) => h.id === habitId);
                 if (!habit) return;
                 updateHabit({ ...habit, weeklyGoal });
+              }}
+              onAddSectionHabit={({ categoryId, prefix }) => {
+                const entered = window.prompt("Enter habit name");
+                const rawName = entered?.trim() ?? "";
+                if (!rawName) return;
+                const prefixText = prefix?.trim();
+                const normalizedName =
+                  prefixText && rawName.toLowerCase().startsWith(prefixText.toLowerCase())
+                    ? rawName.slice(prefixText.length).trim()
+                    : rawName;
+                if (!normalizedName) return;
+                const defaultEmoji =
+                  prefix === "AM •"
+                    ? "☀️"
+                    : prefix === "PM •"
+                      ? "🌙"
+                      : prefix === "Before Sleep •"
+                        ? "🌌"
+                        : data.categories.find((category) => category.id === categoryId)?.emoji ?? "🌷";
+                addHabit({
+                  name: prefixText ? `${prefixText} ${normalizedName}` : normalizedName,
+                  emoji: defaultEmoji,
+                  categoryId,
+                  weeklyGoal: 7,
+                });
               }}
               completed={(habitId, dateKey) => isCompleted(habitId, dateLookup[dateKey])}
               onToggle={toggleCompletion}

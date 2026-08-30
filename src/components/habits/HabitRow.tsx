@@ -13,19 +13,27 @@ type Props = {
 export const HabitRow = ({ habit, dayKeys, dateLookup, weeklyDone, onWeeklyGoalChange, completed, onToggle }: Props) => (
   <div className="grid grid-cols-[270px_repeat(7,minmax(42px,1fr))_130px] items-center gap-1 py-1">
     <div className="text-sm">
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <span>
           {habit.emoji} {habit.name}
         </span>
-        <input
-          type="number"
-          min={1}
-          max={7}
-          value={habit.weeklyGoal}
-          onChange={(e) => onWeeklyGoalChange(habit.id, Math.max(1, Math.min(7, Number(e.target.value) || 1)))}
-          className="w-14 rounded border border-stone-200 px-1 py-0.5 text-xs"
-          aria-label={`${habit.name} weekly goal`}
-        />
+        <div className="flex items-center gap-0.5" title="Weekly goal (days)">
+          {Array.from({ length: 7 }, (_, i) => {
+            const day = i + 1;
+            const active = day <= habit.weeklyGoal;
+            return (
+              <button
+                key={day}
+                type="button"
+                onClick={() => onWeeklyGoalChange(habit.id, day)}
+                className={`h-2 w-2 rounded-full transition-colors ${
+                  active ? "bg-rose-300" : "bg-stone-200 hover:bg-stone-300"
+                }`}
+                aria-label={`Set weekly goal to ${day} for ${habit.name}`}
+              />
+            );
+          })}
+        </div>
       </div>
     </div>
     {dayKeys.map((dayKey) => (

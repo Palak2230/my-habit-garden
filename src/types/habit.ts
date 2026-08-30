@@ -1,9 +1,11 @@
 export type HabitCategoryId =
   | "skincare"
+  | "beforesleep"
   | "bodycare"
   | "haircare"
   | "productivity"
   | "health"
+  | "fitness"
   | "supplements";
 
 export type Habit = {
