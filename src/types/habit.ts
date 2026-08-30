@@ -1,4 +1,4 @@
-export type HabitCategoryId = "skincare" | "bodycare" | "productivity" | "health";
+export type HabitCategoryId = "skincare" | "bodycare" | "productivity" | "health" | "supplements";
 
 export type Habit = {
   id: string;

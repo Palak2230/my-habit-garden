@@ -11,6 +11,7 @@ const defaultCategories: Category[] = [
   { id: "bodycare", name: "Bodycare", emoji: "🫧", accent: "#BFD6E6", order: 2 },
   { id: "productivity", name: "Productivity", emoji: "📚", accent: "#C8BEDF", order: 3 },
   { id: "health", name: "Health", emoji: "💪", accent: "#B6CFBF", order: 4 },
+  { id: "supplements", name: "Supplements", emoji: "💊", accent: "#F3CFBA", order: 5 },
 ];
 
 const defaultHabits: Habit[] = [
@@ -29,7 +30,7 @@ const defaultHabits: Habit[] = [
   ["💧", "2L Water", "health"],
   ["🧘", "Exercise / Stretch", "health"],
   ["😴", "Sleep on Time", "health"],
-  ["💊", "Supplements", "health"],
+  ["💊", "Supplements", "supplements"],
 ].map(([emoji, name, categoryId], index) => ({
   id: crypto.randomUUID(),
   emoji,
@@ -70,10 +71,23 @@ export const habitStorage = {
     try {
       const parsed = JSON.parse(raw);
       if (!isObject(parsed)) return defaultData;
+      const parsedHabits = Array.isArray(parsed.habits) ? (parsed.habits as Habit[]) : defaultData.habits;
+      const parsedCategories = Array.isArray(parsed.categories) ? (parsed.categories as Category[]) : defaultData.categories;
+      const categoryById = new Set(parsedCategories.map((c) => c.id));
+      const mergedCategories = [
+        ...parsedCategories,
+        ...defaultCategories.filter((c) => !categoryById.has(c.id)),
+      ].sort((a, b) => a.order - b.order);
+      const migratedHabits = parsedHabits.map((habit) => {
+        if (habit.categoryId === "health" && habit.name.trim().toLowerCase() === "supplements") {
+          return { ...habit, categoryId: "supplements" as Habit["categoryId"] };
+        }
+        return habit;
+      });
       return {
         version: 1,
-        habits: Array.isArray(parsed.habits) ? (parsed.habits as Habit[]) : defaultData.habits,
-        categories: Array.isArray(parsed.categories) ? (parsed.categories as Category[]) : defaultData.categories,
+        habits: migratedHabits,
+        categories: mergedCategories,
         completions: Array.isArray(parsed.completions) ? (parsed.completions as Completion[]) : [],
         reflections: Array.isArray(parsed.reflections) ? (parsed.reflections as Reflection[]) : [],
         settings: isObject(parsed.settings) ? { ...defaultSettings, ...parsed.settings } as AppSettings : defaultSettings,
