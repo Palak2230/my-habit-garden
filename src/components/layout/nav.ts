@@ -13,7 +13,7 @@ import {
 export const navItems = [
   { to: "/", label: "Home", icon: Home, emoji: "🏠" },
   { to: "/habits", label: "Habit Tracker", icon: Flower2, emoji: "🌷" },
-  { to: "/mood", label: "Mood Tracker", icon: Smile, emoji: "😊" },
+  { to: "/mood", label: "Wellness", icon: Smile, emoji: "😊" },
   { to: "/ideas", label: "Ideas Tracker", icon: Lightbulb, emoji: "💡" },
   { to: "/expenses", label: "Expense Tracker", icon: Wallet, emoji: "💰" },
   { to: "/net-worth", label: "Net Worth Tracker", icon: Gem, emoji: "💎" },

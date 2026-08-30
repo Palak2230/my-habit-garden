@@ -2,9 +2,18 @@ import { createContext, createElement, useContext, useMemo, useState } from "rea
 import { habitStorage } from "../storage/habitStorage";
 import type { Completion } from "../types/completion";
 import type { Habit, HabitCategoryId } from "../types/habit";
-import type { AppSettings, Category, GardenData, Reflection } from "../types/tracker";
+import type {
+  AppSettings,
+  Category,
+  DayStatus,
+  DayStatusType,
+  GardenData,
+  HabitReminder,
+  Reflection,
+  TrackerEntry,
+} from "../types/tracker";
 import { toDateKey } from "../utils/dates";
-import { currentStreak, longestStreak } from "../utils/streaks";
+import { getDayStatus, isExcusedDay, currentStreak, longestStreak } from "../utils/streaks";
 import { categoryCompletion, dailyCompletionSeries, weeklyCompletionPercent } from "../utils/statistics";
 
 type AddHabitInput = {
@@ -14,14 +23,32 @@ type AddHabitInput = {
   weeklyGoal: number;
 };
 
+type CompletionUpdate = {
+  completed?: boolean;
+  skipped?: boolean;
+  note?: string;
+};
+
 type GardenContextValue = {
   data: GardenData;
   habitsByCategory: Category[];
   toggleCompletion: (habitId: string, date: Date) => void;
+  setCompletion: (habitId: string, date: Date, update: CompletionUpdate) => void;
+  getCompletion: (habitId: string, dateKey: string) => Completion | undefined;
   isCompleted: (habitId: string, date: Date) => boolean;
+  isSkipped: (habitId: string, dateKey: string) => boolean;
+  setDayStatus: (date: Date, type: DayStatusType | null, note?: string) => void;
+  getDayStatusForKey: (dateKey: string) => DayStatus | undefined;
+  isExcusedDayKey: (dateKey: string) => boolean;
+  updateTrackerEntry: (date: Date, update: Partial<Omit<TrackerEntry, "date">>) => void;
+  getTrackerEntry: (dateKey: string) => TrackerEntry | undefined;
+  addReminder: (reminder: Omit<HabitReminder, "id">) => void;
+  updateReminder: (reminder: HabitReminder) => void;
+  deleteReminder: (reminderId: string) => void;
   addHabit: (input: AddHabitInput) => void;
   updateHabit: (habit: Habit) => void;
   deactivateHabit: (habitId: string) => void;
+  reactivateHabit: (habitId: string) => void;
   reorderHabit: (habitId: string, direction: "up" | "down") => void;
   updateReflection: (reflection: Reflection) => void;
   updateSettings: (settings: Partial<AppSettings>) => void;
@@ -53,23 +80,108 @@ export const GardenProvider = ({ children }: { children: React.ReactNode }) => {
     habitStorage.save(next);
   };
 
-  const toggleCompletion = (habitId: string, date: Date) => {
-    const dateKey = toDateKey(date);
-    const key = `${habitId}:${dateKey}`;
+  const upsertCompletion = (habitId: string, dateKey: string, update: CompletionUpdate) => {
     const map = new Map(data.completions.map((c) => [`${c.habitId}:${c.date}`, c]));
-    const existing = map.get(key);
-    const updated: Completion = {
+    const existing = map.get(`${habitId}:${dateKey}`);
+    const completed = update.completed ?? existing?.completed ?? false;
+    const skipped = completed ? false : (update.skipped ?? existing?.skipped ?? false);
+    const note =
+      update.note !== undefined ? update.note : completed ? undefined : existing?.note;
+
+    const next: Completion = {
       habitId,
       date: dateKey,
-      completed: !existing?.completed,
+      completed,
+      ...(skipped ? { skipped: true } : {}),
+      ...(note ? { note } : {}),
     };
-    map.set(key, updated);
-    persist({ ...data, completions: Array.from(map.values()) });
+
+    if (!completed && !skipped && !note) {
+      map.delete(`${habitId}:${dateKey}`);
+    } else {
+      map.set(`${habitId}:${dateKey}`, next);
+    }
+
+    return Array.from(map.values());
   };
+
+  const setCompletion = (habitId: string, date: Date, update: CompletionUpdate) => {
+    const dateKey = toDateKey(date);
+    persist({ ...data, completions: upsertCompletion(habitId, dateKey, update) });
+  };
+
+  const toggleCompletion = (habitId: string, date: Date) => {
+    const dateKey = toDateKey(date);
+    const existing = data.completions.find((c) => c.habitId === habitId && c.date === dateKey);
+    setCompletion(habitId, date, {
+      completed: !existing?.completed,
+      skipped: false,
+      note: existing?.completed ? undefined : existing?.note,
+    });
+  };
+
+  const getCompletion = (habitId: string, dateKey: string) =>
+    data.completions.find((c) => c.habitId === habitId && c.date === dateKey);
 
   const isCompleted = (habitId: string, date: Date) => {
     const dateKey = toDateKey(date);
-    return data.completions.some((c) => c.habitId === habitId && c.date === dateKey && c.completed);
+    return Boolean(getCompletion(habitId, dateKey)?.completed);
+  };
+
+  const isSkipped = (habitId: string, dateKey: string) =>
+    Boolean(getCompletion(habitId, dateKey)?.skipped);
+
+  const setDayStatus = (date: Date, type: DayStatusType | null, note?: string) => {
+    const dateKey = toDateKey(date);
+    const without = data.dayStatuses.filter((status) => status.date !== dateKey);
+    if (!type) {
+      persist({ ...data, dayStatuses: without });
+      return;
+    }
+    persist({
+      ...data,
+      dayStatuses: [...without, { date: dateKey, type, ...(note ? { note } : {}) }],
+    });
+  };
+
+  const getDayStatusForKey = (dateKey: string) => getDayStatus(data.dayStatuses, dateKey);
+
+  const isExcusedDayKey = (dateKey: string) => isExcusedDay(data.dayStatuses, dateKey);
+
+  const updateTrackerEntry = (date: Date, update: Partial<Omit<TrackerEntry, "date">>) => {
+    const dateKey = toDateKey(date);
+    const existing = data.trackerEntries.find((entry) => entry.date === dateKey);
+    const next: TrackerEntry = {
+      date: dateKey,
+      ...(existing ?? {}),
+      ...update,
+    };
+    const without = data.trackerEntries.filter((entry) => entry.date !== dateKey);
+    persist({ ...data, trackerEntries: [...without, next] });
+  };
+
+  const getTrackerEntry = (dateKey: string) =>
+    data.trackerEntries.find((entry) => entry.date === dateKey);
+
+  const addReminder = (reminder: Omit<HabitReminder, "id">) => {
+    persist({
+      ...data,
+      reminders: [...data.reminders, { ...reminder, id: crypto.randomUUID() }],
+    });
+  };
+
+  const updateReminder = (reminder: HabitReminder) => {
+    persist({
+      ...data,
+      reminders: data.reminders.map((item) => (item.id === reminder.id ? reminder : item)),
+    });
+  };
+
+  const deleteReminder = (reminderId: string) => {
+    persist({
+      ...data,
+      reminders: data.reminders.filter((item) => item.id !== reminderId),
+    });
   };
 
   const addHabit = ({ name, emoji, categoryId, weeklyGoal }: AddHabitInput) => {
@@ -95,6 +207,13 @@ export const GardenProvider = ({ children }: { children: React.ReactNode }) => {
     persist({
       ...data,
       habits: data.habits.map((h) => (h.id === habitId ? { ...h, active: false } : h)),
+    });
+  };
+
+  const reactivateHabit = (habitId: string) => {
+    persist({
+      ...data,
+      habits: data.habits.map((h) => (h.id === habitId ? { ...h, active: true } : h)),
     });
   };
 
@@ -142,7 +261,13 @@ export const GardenProvider = ({ children }: { children: React.ReactNode }) => {
       if (!Array.isArray(parsed.habits) || !Array.isArray(parsed.categories) || !Array.isArray(parsed.completions)) {
         return { ok: false, message: "Invalid backup format." };
       }
-      persist(parsed);
+      persist({
+        ...parsed,
+        dayStatuses: parsed.dayStatuses ?? [],
+        trackerEntries: parsed.trackerEntries ?? [],
+        reminders: parsed.reminders ?? data.reminders,
+        settings: { ...data.settings, ...parsed.settings },
+      });
       return { ok: true, message: "Backup imported." };
     } catch {
       return { ok: false, message: "Could not parse JSON." };
@@ -159,8 +284,8 @@ export const GardenProvider = ({ children }: { children: React.ReactNode }) => {
   const statsForWeek = (reference: Date) => {
     const activeHabits = data.habits.filter((h) => h.active);
     const weeklyPercent = weeklyCompletionPercent(activeHabits, data.completions, reference);
-    const streak = currentStreak(activeHabits, data.completions);
-    const longest = longestStreak(activeHabits, data.completions);
+    const streak = currentStreak(activeHabits, data.completions, data.dayStatuses);
+    const longest = longestStreak(activeHabits, data.completions, data.dayStatuses);
     const dailySeries = dailyCompletionSeries(activeHabits, data.completions, reference);
     const category = categoryCompletion(data.categories, activeHabits, data.completions, reference);
     const bestHabit = activeHabits
@@ -179,10 +304,22 @@ export const GardenProvider = ({ children }: { children: React.ReactNode }) => {
         data,
         habitsByCategory,
         toggleCompletion,
+        setCompletion,
+        getCompletion,
         isCompleted,
+        isSkipped,
+        setDayStatus,
+        getDayStatusForKey,
+        isExcusedDayKey,
+        updateTrackerEntry,
+        getTrackerEntry,
+        addReminder,
+        updateReminder,
+        deleteReminder,
         addHabit,
         updateHabit,
         deactivateHabit,
+        reactivateHabit,
         reorderHabit,
         updateReflection,
         updateSettings,

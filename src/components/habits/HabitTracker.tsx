@@ -4,8 +4,10 @@ import { useCompletions } from "../../hooks/useCompletions";
 import { useHabits } from "../../hooks/useHabits";
 import { useWeek } from "../../hooks/useWeek";
 import { toDateKey, isSameDay, startOfWeekMonday } from "../../utils/dates";
+import { clampThreshold, resolvePassThreshold } from "../../utils/sectionPass";
 import { AddHabitModal } from "./AddHabitModal";
 import { CategorySection } from "./CategorySection";
+import { DayStatusPicker } from "./DayStatusPicker";
 import { MonthlyView } from "./MonthlyView";
 import { WeekNavigation } from "./WeekNavigation";
 import { WeeklyChart } from "./WeeklyChart";
@@ -13,8 +15,9 @@ import { WeeklyReflection } from "./WeeklyReflection";
 import { WeeklyStats } from "./WeeklyStats";
 
 export const HabitTracker = () => {
-  const { data, addHabit, statsForWeek, updateReflection, updateHabit } = useHabits();
-  const { toggleCompletion, isCompleted } = useCompletions();
+  const { data, addHabit, statsForWeek, updateReflection, updateHabit, reorderHabit, updateSettings, getCompletion, setCompletion } =
+    useHabits();
+  const { isCompleted, setDayStatus, getDayStatusForKey, isExcusedDayKey } = useCompletions();
   const { reference, days, rangeLabel, goPrev, goNext, goThisWeek } = useWeek();
   const [adding, setAdding] = useState(false);
   const [viewMode, setViewMode] = useState<"weekly" | "monthly">("weekly");
@@ -25,6 +28,20 @@ export const HabitTracker = () => {
   const inCurrentWeek = isSameDay(startOfWeekMonday(today), startOfWeekMonday(reference));
 
   const stats = statsForWeek(reference);
+
+  const getPassThreshold = useMemo(
+    () => (sectionKey: string) => resolvePassThreshold(data.settings, sectionKey),
+    [data.settings],
+  );
+
+  const handlePassThresholdChange = (sectionKey: string, value: number) => {
+    updateSettings({
+      sectionPassThresholds: {
+        ...data.settings.sectionPassThresholds,
+        [sectionKey]: clampThreshold(value),
+      },
+    });
+  };
 
   const categories = useMemo(
     () =>
@@ -78,17 +95,22 @@ export const HabitTracker = () => {
           <WeekNavigation rangeLabel={rangeLabel} onPrev={goPrev} onNext={goNext} onThisWeek={goThisWeek} />
 
           <div className="mb-2 grid grid-cols-[270px_repeat(7,minmax(42px,1fr))_130px] gap-1 text-center text-xs font-semibold text-stone-500">
-            <div />
+            <div className="text-left text-[10px] font-normal text-stone-400">Day type</div>
             {days.map((day) => {
               const key = toDateKey(day);
               const isToday = inCurrentWeek && isSameDay(day, today);
               return (
-                <div key={key} className={`rounded-md p-1 ${isToday ? "bg-rose-100 text-rose-900" : ""}`}>
-                  {day.toLocaleDateString("en-US", { weekday: "short" }).toUpperCase()} {day.getDate()}
-                </div>
+                <DayStatusPicker
+                  key={key}
+                  dayKey={key}
+                  label={`${day.toLocaleDateString("en-US", { weekday: "short" }).toUpperCase()} ${day.getDate()}`}
+                  isToday={isToday}
+                  status={getDayStatusForKey(key)}
+                  onChange={(type) => setDayStatus(day, type)}
+                />
               );
             })}
-            <div>PROGRESS</div>
+            <div />
           </div>
 
           {categories.map((category) => (
@@ -101,11 +123,14 @@ export const HabitTracker = () => {
               habits={category.habits}
               dayKeys={dayKeys}
               dateLookup={dateLookup}
+              resolvePassThreshold={getPassThreshold}
+              onPassThresholdChange={handlePassThresholdChange}
               onWeeklyGoalChange={(habitId, weeklyGoal) => {
                 const habit = data.habits.find((h) => h.id === habitId);
                 if (!habit) return;
                 updateHabit({ ...habit, weeklyGoal });
               }}
+              onReorderHabit={reorderHabit}
               onAddSectionHabit={({ categoryId, prefix }) => {
                 const entered = window.prompt("Enter habit name");
                 const rawName = entered?.trim() ?? "";
@@ -121,8 +146,8 @@ export const HabitTracker = () => {
                     ? "☀️"
                     : prefix === "PM •"
                       ? "🌙"
-                      : prefix === "Before Sleep •"
-                        ? "🌌"
+                      : categoryId === "beforesleep"
+                        ? "🌙"
                         : data.categories.find((category) => category.id === categoryId)?.emoji ?? "🌷";
                 addHabit({
                   name: prefixText ? `${prefixText} ${normalizedName}` : normalizedName,
@@ -132,7 +157,9 @@ export const HabitTracker = () => {
                 });
               }}
               completed={(habitId, dateKey) => isCompleted(habitId, dateLookup[dateKey])}
-              onToggle={toggleCompletion}
+              getCompletion={getCompletion}
+              onCompletionChange={setCompletion}
+              isExcusedDay={isExcusedDayKey}
             />
           ))}
 
@@ -149,7 +176,15 @@ export const HabitTracker = () => {
           />
         </>
       ) : (
-        <MonthlyView habits={data.habits} completions={data.completions} onToggle={toggleCompletion} />
+        <MonthlyView
+          habits={data.habits}
+          completions={data.completions}
+          passThreshold={data.settings.sectionPassThreshold}
+          onToggle={(habitId, date) => {
+            const existing = getCompletion(habitId, toDateKey(date));
+            setCompletion(habitId, date, { completed: !existing?.completed, skipped: false });
+          }}
+        />
       )}
 
       {adding && <AddHabitModal onClose={() => setAdding(false)} onAdd={addHabit} />}

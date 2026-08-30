@@ -1,6 +1,6 @@
 import type { Completion } from "../types/completion";
 import type { Habit } from "../types/habit";
-import type { AppSettings, Category, GardenData, Reflection } from "../types/tracker";
+import type { AppSettings, Category, DayStatus, GardenData, HabitReminder, Reflection, TrackerEntry } from "../types/tracker";
 
 const STORAGE_KEY = "my-habit-garden-data";
 
@@ -19,11 +19,19 @@ const skincareRoutineDefaults = [
 ] as const;
 
 const beforeSleepDefaults = [
-  ["🌌", "Read Book"],
-  ["🌌", "Put Phone Away in Last 30 Minutes"],
-  ["🌌", "Use Facial Rollers"],
-  ["🌌", "Put Body Lotion"],
+  ["📖", "Read Book"],
+  ["📵", "No Phone"],
+  ["✨", "Use Facial Rollers"],
+  ["🧴", "Put Body Lotion"],
 ] as const;
+
+const beforeSleepEmojiByName: Record<string, string> = {
+  "read book": "📖",
+  "no phone": "📵",
+  "put phone away in last 30 minutes": "📵",
+  "use facial rollers": "✨",
+  "put body lotion": "🧴",
+};
 
 const bodycareDefaults = [
   ["🚿", "Shower"],
@@ -99,7 +107,17 @@ const defaultSettings: AppSettings = {
   theme: "light",
   accent: "rose",
   displayName: "",
+  sectionPassThreshold: 100,
+  sectionPassThresholds: {},
+  enabledTrackers: ["mood", "skin", "water", "productivity"],
+  notificationsEnabled: false,
 };
+
+const defaultReminders: HabitReminder[] = [
+  { id: "reminder-pm-skincare", label: "🌙 PM Skincare", time: "22:00", enabled: false, categoryId: "skincare" },
+  { id: "reminder-before-sleep", label: "🌌 Before Sleep Routine", time: "22:30", enabled: false, categoryId: "beforesleep" },
+  { id: "reminder-am-skincare", label: "☀️ AM Skincare", time: "08:00", enabled: false, categoryId: "skincare" },
+];
 
 const defaultData: GardenData = {
   version: 1,
@@ -107,6 +125,9 @@ const defaultData: GardenData = {
   categories: defaultCategories,
   completions: [],
   reflections: [],
+  dayStatuses: [],
+  trackerEntries: [],
+  reminders: defaultReminders,
   settings: defaultSettings,
 };
 
@@ -195,9 +216,18 @@ export const habitStorage = {
       const routineAdjustedHabits = skincareMigratedHabits.map((habit) => {
         if (
           habit.categoryId === "beforesleep" &&
+          normalize(habit.name) === "put phone away in last 30 minutes"
+        ) {
+          return { ...habit, name: "No Phone", emoji: "📵" };
+        }
+        if (
+          habit.categoryId === "beforesleep" &&
           normalize(habit.name).startsWith("before sleep •")
         ) {
           return { ...habit, name: habit.name.replace(/^Before Sleep •\s*/i, "").trim() };
+        }
+        if (habit.categoryId === "beforesleep" && beforeSleepEmojiByName[normalize(habit.name)]) {
+          return { ...habit, emoji: beforeSleepEmojiByName[normalize(habit.name)] };
         }
         if (habit.categoryId === "haircare" && normalize(habit.name) === "hair serum") {
           return { ...habit, name: "WishCare Serum" };
@@ -376,7 +406,29 @@ export const habitStorage = {
         categories: mergedCategories,
         completions: Array.isArray(parsed.completions) ? (parsed.completions as Completion[]) : [],
         reflections: Array.isArray(parsed.reflections) ? (parsed.reflections as Reflection[]) : [],
-        settings: isObject(parsed.settings) ? { ...defaultSettings, ...parsed.settings } as AppSettings : defaultSettings,
+        dayStatuses: Array.isArray(parsed.dayStatuses) ? (parsed.dayStatuses as DayStatus[]) : [],
+        trackerEntries: Array.isArray(parsed.trackerEntries) ? (parsed.trackerEntries as TrackerEntry[]) : [],
+        reminders: Array.isArray(parsed.reminders) ? (parsed.reminders as HabitReminder[]) : defaultReminders,
+        settings: isObject(parsed.settings)
+          ? {
+              ...defaultSettings,
+              ...(parsed.settings as AppSettings),
+              sectionPassThreshold: Math.max(
+                50,
+                Math.min(100, (parsed.settings as AppSettings).sectionPassThreshold ?? defaultSettings.sectionPassThreshold),
+              ),
+              sectionPassThresholds: Object.fromEntries(
+                Object.entries((parsed.settings as AppSettings).sectionPassThresholds ?? {}).map(([key, value]) => [
+                  key,
+                  Math.max(50, Math.min(100, value)),
+                ]),
+              ),
+              enabledTrackers:
+                (parsed.settings as AppSettings).enabledTrackers ?? defaultSettings.enabledTrackers,
+              notificationsEnabled:
+                (parsed.settings as AppSettings).notificationsEnabled ?? defaultSettings.notificationsEnabled,
+            }
+          : defaultSettings,
       };
     } catch {
       return defaultData;

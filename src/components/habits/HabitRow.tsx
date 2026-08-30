@@ -1,4 +1,6 @@
+import type { Completion } from "../../types/completion";
 import type { Habit } from "../../types/habit";
+import { HabitDayCell } from "./HabitDayCell";
 
 type Props = {
   habit: Habit;
@@ -6,14 +8,54 @@ type Props = {
   dateLookup: Record<string, Date>;
   weeklyDone: number;
   onWeeklyGoalChange: (habitId: string, weeklyGoal: number) => void;
-  completed: (habitId: string, dateKey: string) => boolean;
-  onToggle: (habitId: string, date: Date) => void;
+  onReorder?: (habitId: string, direction: "up" | "down") => void;
+  canMoveUp?: boolean;
+  canMoveDown?: boolean;
+  getCompletion: (habitId: string, dateKey: string) => Completion | undefined;
+  onCompletionChange: (
+    habitId: string,
+    date: Date,
+    update: { completed?: boolean; skipped?: boolean; note?: string },
+  ) => void;
 };
 
-export const HabitRow = ({ habit, dayKeys, dateLookup, weeklyDone, onWeeklyGoalChange, completed, onToggle }: Props) => (
-  <div className="grid grid-cols-[270px_repeat(7,minmax(42px,1fr))_130px] items-center gap-1 py-1">
+export const HabitRow = ({
+  habit,
+  dayKeys,
+  dateLookup,
+  weeklyDone,
+  onWeeklyGoalChange,
+  onReorder,
+  canMoveUp = false,
+  canMoveDown = false,
+  getCompletion,
+  onCompletionChange,
+}: Props) => (
+  <div className="group/row grid grid-cols-[270px_repeat(7,minmax(42px,1fr))_130px] items-center gap-1 py-1">
     <div className="text-sm">
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-1.5">
+        {onReorder && (
+          <span className="flex flex-col">
+            <button
+              type="button"
+              disabled={!canMoveUp}
+              onClick={() => onReorder(habit.id, "up")}
+              className="rounded px-0.5 text-[10px] text-stone-400 hover:bg-stone-100 disabled:opacity-30"
+              aria-label={`Move ${habit.name} up`}
+            >
+              ↑
+            </button>
+            <button
+              type="button"
+              disabled={!canMoveDown}
+              onClick={() => onReorder(habit.id, "down")}
+              className="rounded px-0.5 text-[10px] text-stone-400 hover:bg-stone-100 disabled:opacity-30"
+              aria-label={`Move ${habit.name} down`}
+            >
+              ↓
+            </button>
+          </span>
+        )}
         <span>
           {habit.emoji} {habit.name}
         </span>
@@ -37,14 +79,13 @@ export const HabitRow = ({ habit, dayKeys, dateLookup, weeklyDone, onWeeklyGoalC
       </div>
     </div>
     {dayKeys.map((dayKey) => (
-      <label key={`${habit.id}-${dayKey}`} className="mx-auto flex h-8 w-8 items-center justify-center rounded-md hover:bg-rose-50">
-        <input
-          type="checkbox"
-          checked={completed(habit.id, dayKey)}
-          onChange={() => onToggle(habit.id, dateLookup[dayKey])}
-          aria-label={`${habit.name} on ${dayKey}`}
-        />
-      </label>
+      <HabitDayCell
+        key={`${habit.id}-${dayKey}`}
+        habitName={habit.name}
+        dayKey={dayKey}
+        completion={getCompletion(habit.id, dayKey)}
+        onChange={(update) => onCompletionChange(habit.id, dateLookup[dayKey], update)}
+      />
     ))}
     <div className="pr-1">
       <div className="h-2.5 w-full overflow-hidden rounded-full bg-stone-100">

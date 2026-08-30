@@ -1,14 +1,16 @@
 import { useMemo, useState } from "react";
 import type { Habit } from "../../types/habit";
+import { dayPassColorClass } from "../../utils/sectionPass";
 import { isSameDay, monthDaysGrid, startOfMonth, toDateKey } from "../../utils/dates";
 
 type Props = {
   habits: Habit[];
   completions: { habitId: string; date: string; completed: boolean }[];
+  passThreshold: number;
   onToggle: (habitId: string, date: Date) => void;
 };
 
-export const MonthlyView = ({ habits, completions, onToggle }: Props) => {
+export const MonthlyView = ({ habits, completions, passThreshold, onToggle }: Props) => {
   const [monthCursor, setMonthCursor] = useState(() => startOfMonth(new Date()));
   const [selectedDate, setSelectedDate] = useState(() => new Date());
   const activeHabits = habits.filter((h) => h.active);
@@ -49,6 +51,13 @@ export const MonthlyView = ({ habits, completions, onToggle }: Props) => {
         </button>
       </div>
 
+      <div className="mb-2 flex flex-wrap gap-2 text-[10px] text-stone-500">
+        <span className="rounded border border-emerald-200 bg-emerald-50 px-1.5 py-0.5">Pass</span>
+        <span className="rounded border border-rose-100 bg-rose-50 px-1.5 py-0.5">Good</span>
+        <span className="rounded border border-amber-100 bg-amber-50 px-1.5 py-0.5">Okay</span>
+        <span className="rounded border border-orange-100 bg-orange-50 px-1.5 py-0.5">Low</span>
+      </div>
+
       <div className="grid grid-cols-7 gap-1 text-center text-xs font-semibold text-stone-500">
         {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
           <div key={d}>{d}</div>
@@ -64,12 +73,12 @@ export const MonthlyView = ({ habits, completions, onToggle }: Props) => {
               type="button"
               onClick={() => setSelectedDate(date)}
               className={`rounded-md border p-1 text-left text-xs ${
-                inMonth ? "border-rose-100 bg-white" : "border-stone-100 bg-stone-50 text-stone-400"
+                inMonth ? dayPassColorClass(pct, passThreshold) : "border-stone-100 bg-stone-50 text-stone-400"
               } ${isSameDay(date, selectedDate) ? "ring-1 ring-rose-300" : ""}`}
               style={{ opacity: inMonth ? 1 : 0.65 }}
             >
               <div className="font-semibold">{date.getDate()}</div>
-              <div className="text-[10px] text-stone-500">{pct}%</div>
+              <div className="text-[10px] text-stone-600">{pct}%</div>
             </button>
           );
         })}

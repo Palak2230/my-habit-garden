@@ -1,6 +1,24 @@
 import { useHabits } from "./useHabits";
 
 export const useCompletions = () => {
-  const { toggleCompletion, isCompleted } = useHabits();
-  return { toggleCompletion, isCompleted };
+  const {
+    toggleCompletion,
+    setCompletion,
+    getCompletion,
+    isCompleted,
+    isSkipped,
+    setDayStatus,
+    getDayStatusForKey,
+    isExcusedDayKey,
+  } = useHabits();
+  return {
+    toggleCompletion,
+    setCompletion,
+    getCompletion,
+    isCompleted,
+    isSkipped,
+    setDayStatus,
+    getDayStatusForKey,
+    isExcusedDayKey,
+  };
 };
